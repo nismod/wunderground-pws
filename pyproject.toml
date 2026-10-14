@@ -1,0 +1,28 @@
+[project]
+name = "wunderground-pws"
+version = "0.1.0"
+description = "Access PWS records from Weather Underground"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Tom Russell", email = "tom.russell@ouce.ox.ac.uk" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "adjusttext",
+    "contextily",
+    "geopandas",
+    "matplotlib",
+    "pandas",
+    "pyarrow",
+    "pyogrio",
+    "requests",
+]
+
+[project.scripts]
+wunderground-pws = "wunderground_pws.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
