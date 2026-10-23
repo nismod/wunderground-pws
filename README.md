@@ -30,6 +30,24 @@ empty or invalid metadata is repaired when an observation is available.
 Transient request failures are retried, and a failed station does not prevent
 other stations from being processed.
 
+## Find stations in an area
+
+Search a longitude/latitude bounding box (`west south east north`) or a place
+name, and optionally save IDs in the format accepted by `download --station-file`:
+
+```sh
+uv run wunderground-pws find-stations --bbox 57.3 -20.6 57.8 -19.9
+uv run wunderground-pws find-stations --place "Port Louis, Mauritius" --output stations.txt
+uv run wunderground-pws find-stations --bbox 57.2 -20.8 59.5 -19.5 --max-tiles 150 --output stations.txt
+uv run wunderground-pws download --record-type daily --station-file stations.txt --output-dir data
+```
+
+Place names are resolved with OpenStreetMap Nominatim. Discovery uses the
+current Weather.com station layer, so results represent stations currently
+visible there, not a complete historical inventory. The search is limited to
+100 map tiles per invocation by default. Increase this with `--max-tiles N`
+for larger regions; the command then makes one station request per tile.
+
 ## Convert station metadata to GeoPackage
 
 ```sh

@@ -14,6 +14,7 @@ from typing import Any
 import requests
 
 from .convert import metadata_to_gpkg, observations_to_parquet
+from .discover import DEFAULT_MAX_TILES, find_stations, geocode_place, validate_bbox
 
 API_BASE_URL = "https://api.weather.com/v2/pws/history"
 API_KEY_ENV = "WEATHER_API_KEY"
@@ -176,6 +177,17 @@ def build_parser() -> argparse.ArgumentParser:
     download.add_argument("--output-dir", type=Path, default=Path("."))
     download.add_argument("--record-type", choices=RECORD_TYPES, required=True)
 
+    discover = commands.add_parser("find-stations", help="find current stations in a bbox or place")
+    area = discover.add_mutually_exclusive_group(required=True)
+    area.add_argument("--bbox", nargs=4, type=float, metavar=("WEST", "SOUTH", "EAST", "NORTH"))
+    area.add_argument("--place", help="place name to geocode with OpenStreetMap Nominatim")
+    discover.add_argument("--api-key", help=f"Weather.com API key (default: ${API_KEY_ENV})")
+    discover.add_argument("--output", type=Path, help="write one station ID per line for download --station-file")
+    discover.add_argument(
+        "--max-tiles", type=int, default=DEFAULT_MAX_TILES, metavar="N",
+        help=f"maximum tiles to request (default: {DEFAULT_MAX_TILES})",
+    )
+
     metadata = commands.add_parser("metadata-to-gpkg", help="combine station metadata into a GeoPackage")
     metadata.add_argument("input_dir", type=Path)
     metadata.add_argument("output", type=Path)
@@ -215,6 +227,27 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "download":
         return _run_download(args, parser)
+    if args.command == "find-stations":
+        api_key = args.api_key or os.environ.get(API_KEY_ENV)
+        if not api_key:
+            parser.error(f"provide --api-key or set {API_KEY_ENV}")
+        try:
+            # Check user-supplied bounds before making any network requests.
+            bbox = validate_bbox(tuple(args.bbox)) if args.bbox else None
+            with requests.Session() as session:
+                if bbox is None:
+                    bbox = geocode_place(args.place, session)
+                station_ids = find_stations(bbox, api_key, session, max_tiles=args.max_tiles)
+            result = "".join(f"{station_id}\n" for station_id in station_ids)
+            if args.output:
+                args.output.write_text(result)
+                print(f"wrote {len(station_ids)} station IDs to {args.output}", file=sys.stderr)
+            else:
+                sys.stdout.write(result)
+        except (OSError, ValueError, KeyError, TypeError, requests.RequestException) as error:
+            print(f"error: {str(error).replace(api_key, '[redacted]')}", file=sys.stderr)
+            return 1
+        return 0
     try:
         if args.command == "metadata-to-gpkg":
             count = metadata_to_gpkg(args.input_dir, args.output, overwrite=args.overwrite)
