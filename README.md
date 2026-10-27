@@ -1,13 +1,26 @@
-# Access automatic weather station records for stations in Mauritius and Rodrigues
+# Access automatic weather station records from Weather Underground
 
-Personal weather station records are logged to wunderground and accessible via 
-api.weather.com
+Personal weather station records are accessible via api.weather.com and can sometimes
+complement or extend official records.
 
 See API docs:
 - [Personal Weather Station (PWS) Historical API](https://developer.weather.com/docs/openapi/pws-historical-2-0)
 - [units of measure](https://developer.weather.com/docs/units-of-measure)
 
 ## CLI
+
+This Python package provides a command-line interface to save weather station records.
+
+We recommend using [`uv`](https://docs.astral.sh/uv/) to manage a Python virtual environment
+and install dependencies, but any dependency manager should do the job.
+
+Start by cloning this repository and setting up a virtual environment with dependencies:
+
+```sh
+git clone git@github.com:nismod/wunderground-pws.git
+cd wunderground-pws
+uv sync
+```
 
 Set the API key in `WEATHER_API_KEY` or provide it with `--api-key` (the command-line value takes precedence):
 
@@ -54,9 +67,9 @@ for larger regions; the command then makes one station request per tile.
 uv run wunderground-pws metadata-to-gpkg data outputs/stations.gpkg
 ```
 
-This combines the non-recursive `*.metadata.json` files into a `stations` point
-layer in WGS84 (`EPSG:4326`). The attribute table retains `stationID`, `tz`,
-`lat`, and `lon`.
+This combines the `*.metadata.json` files into a `stations` point layer in
+WGS84 (`EPSG:4326`). The attribute table retains `stationID`, `tz`, `lat`, and
+`lon`.
 
 ## Convert observations to Parquet
 
@@ -64,10 +77,10 @@ layer in WGS84 (`EPSG:4326`). The attribute table retains `stationID`, `tz`,
 uv run wunderground-pws observations-to-parquet --record-type daily data outputs/observations.parquet
 ```
 
-This combines the non-recursive `*.<record-type>.jsonl` files into one Parquet
-file. Each output therefore contains only daily, hourly, or all-observation
-records. UTC and local observation times are stored as typed timestamps. Values
-nested below `metric` are flattened to columns such as `metric.tempHigh` and
+This combines the `*.<record-type>.jsonl` files into one Parquet file. Each
+output therefore contains only daily, hourly, or all-observation records. UTC
+and local observation times are stored as typed timestamps. Values nested below
+`metric` are flattened to columns such as `metric.tempHigh` and
 `metric.precipTotal`. Legacy untyped `<station-id>.jsonl` files are ignored.
 
 Conversion fails if the output exists. Pass `--overwrite` to replace it after a
